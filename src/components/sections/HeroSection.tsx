@@ -1,16 +1,48 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { DifficultySelector } from "@/components/ui/DifficultySelector";
 import { trackEvent } from "@/lib/analytics";
 
+interface UsageInfo {
+  remaining: number;
+  dailyLimit: number;
+  usedToday: number;
+  resetAt?: string;
+}
+
 export function HeroSection() {
   const [prompt, setPrompt] = useState("");
-  const [difficulty, setDifficulty] = useState("medium");
+  const [style, setStyle] = useState("medium");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [dailyLimit, setDailyLimit] = useState<number>(5);
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+
+  // Fetch usage info on mount
+  const fetchUsage = useCallback(async () => {
+    try {
+      const res = await fetch("/api/usage");
+      if (res.ok) {
+        const data: UsageInfo = await res.json();
+        setRemaining(data.remaining ?? null);
+        setDailyLimit(data.dailyLimit ?? 5);
+      } else {
+        setRemaining(null);
+      }
+    } catch {
+      // Silently fail — usage display is non-critical
+      setRemaining(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsage();
+  }, [fetchUsage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,27 +56,55 @@ export function HeroSection() {
       setError("Please enter at least 3 characters.");
       return;
     }
+
     setError("");
+    setImageUrl(null);
     setIsGenerating(true);
-    trackEvent("tool_submit", { prompt_length: trimmed.length, difficulty });
+    trackEvent("tool_submit", { prompt_length: trimmed.length, style });
 
     try {
-      // Placeholder: API endpoint will be connected when backend is ready
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: trimmed, difficulty }),
+        body: JSON.stringify({ prompt: trimmed, style }),
       });
 
+      // Check if response is JSON (error) or binary (image)
+      const contentType = res.headers.get("Content-Type") || "";
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Generation failed. Please try again.");
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          if (data.remaining !== undefined) {
+            setRemaining(data.remaining);
+          }
+          throw new Error(data.error || "Generation failed. Please try again.");
+        } else {
+          throw new Error(`Server error (${res.status}). Please try again.`);
+        }
       }
 
-      const data = await res.json();
-      // When backend is ready: redirect, show image, or trigger download
-      // For now, this is a placeholder
-      trackEvent("tool_result_view", { success: true });
+      if (contentType.includes("image/")) {
+        // Success: got an image back
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        setImageUrl(objectUrl);
+
+        // Update remaining from header
+        const remainingHeader = res.headers.get("X-Remaining");
+        if (remainingHeader !== null) {
+          setRemaining(parseInt(remainingHeader, 10));
+        }
+
+        trackEvent("tool_result_view", { success: true });
+
+        // Scroll to result after a brief delay
+        setTimeout(() => {
+          resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
+      } else {
+        throw new Error("Unexpected response from server. Please try again.");
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
       setError(message);
@@ -52,6 +112,27 @@ export function HeroSection() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleDownload = () => {
+    if (!imageUrl) return;
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.download = `coloring-page-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    trackEvent("tool_download", {});
+  };
+
+  const handleGenerateAnother = () => {
+    setImageUrl(null);
+    setError("");
+    setPrompt("");
+    inputRef.current?.focus();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Refresh usage count
+    fetchUsage();
   };
 
   return (
@@ -113,23 +194,39 @@ export function HeroSection() {
               </div>
 
               {error && (
-                <p className="mt-3 text-sm text-[#D9434E] font-medium">{error}</p>
+                <div className="mt-3 p-3 bg-[#FFF5F5] border border-[#FFDADA] rounded-btn">
+                  <p className="text-sm text-[#D9434E] font-medium">{error}</p>
+                </div>
               )}
             </form>
 
             {/* Difficulty selector */}
             <div className="mb-6">
               <p className="font-body text-sm font-semibold text-[#8C7A6E] mb-2.5">Choose style:</p>
-              <DifficultySelector onChange={setDifficulty} />
+              <DifficultySelector onChange={setStyle} />
             </div>
 
-            {/* Trust line */}
-            <p className="flex items-center gap-2 font-body text-sm text-[#8C7A6E]">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B9A68" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-              No signup. No credit card. Download print-ready PNG instantly.
-            </p>
+            {/* Trust line / remaining usage */}
+            <div className="flex flex-col gap-1.5">
+              <p className="flex items-center gap-2 font-body text-sm text-[#8C7A6E]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B9A68" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                No signup. No credit card. Download print-ready PNG instantly.
+              </p>
+              {remaining !== null && (
+                <p className="flex items-center gap-1.5 font-body text-xs text-[#8C7A6E] ml-6">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <span>
+                    <strong className="text-[#FF6B4A]">{remaining}</strong> free generations left today
+                    {dailyLimit > 0 && <> (out of {dailyLimit})</>}
+                  </span>
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Right column — hero visual */}
@@ -189,6 +286,55 @@ export function HeroSection() {
             </div>
           </div>
         </div>
+
+        {/* ─── Result Display ─── */}
+        {imageUrl && (
+          <div ref={resultRef} className="mt-12 max-w-[800px] mx-auto">
+            <div className="bg-[#FFFDFA] border-2 border-[#FFB630] rounded-[20px] overflow-hidden shadow-[0_2px_16px_rgba(255,182,48,0.15)]">
+              {/* Image display */}
+              <div className="bg-white border-b border-[#EBE0D5] p-4 sm:p-8 flex items-center justify-center">
+                <img
+                  src={imageUrl}
+                  alt="Generated coloring page"
+                  className="max-w-full h-auto max-h-[600px] object-contain"
+                  style={{ imageRendering: "auto" }}
+                />
+              </div>
+
+              {/* Action bar */}
+              <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-3 bg-[#FFF9F2]">
+                <Button
+                  onClick={handleDownload}
+                  eventName="result_download"
+                  className="w-full sm:w-auto"
+                >
+                  <span className="flex items-center gap-2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Download PNG
+                  </span>
+                </Button>
+
+                <button
+                  onClick={handleGenerateAnother}
+                  className="font-body text-sm font-semibold text-[#FF6B4A] underline underline-offset-[3px] hover:text-[#E55A3A] transition-colors px-4 py-2"
+                >
+                  Generate Another One
+                </button>
+
+                {/* Remaining indicator */}
+                {remaining !== null && (
+                  <div className="sm:ml-auto font-body text-xs text-[#8C7A6E]">
+                    <strong className="text-[#FF6B4A]">{remaining}</strong> free generations left today
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
