@@ -71,6 +71,7 @@ export function Accordion({ items, className = "" }: AccordionProps) {
                 maxHeight: isOpen ? (contentRefs.current[index]?.scrollHeight || 500) + "px" : "0px",
                 opacity: isOpen ? 1 : 0,
               }}
+              aria-hidden={!isOpen}
             >
               <div className="pb-5 px-2 text-[#3D2C24] leading-relaxed whitespace-pre-line">
                 {item.answer}
