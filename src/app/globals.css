@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #FFF9F2;
+  --color-bg-card: #FFFDFA;
+  --color-bg-warm: #FEF7EE;
+  --color-primary: #FF6B4A;
+  --color-primary-hover: #E55A3A;
+  --color-accent: #FFB630;
+  --color-accent-hover: #E5A020;
+  --color-cool: #5B9A68;
+  --color-text: #3D2C24;
+  --color-text-secondary: #8C7A6E;
+  --color-border: #EBE0D5;
+  --color-error: #D9434E;
+  --color-footer-bg: #3D2C24;
+  --color-footer-text: #FFF9F2;
+  --color-footer-link: #FFB630;
+
+  --font-display: 'Fredoka', sans-serif;
+  --font-body: 'Nunito Sans', sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', monospace;
+
+  --radius-btn: 12px;
+  --radius-card: 16px;
+  --radius-tag: 20px;
+}
+
+/* Base layer */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: #FFF9F2;
+    color: #3D2C24;
+    font-family: 'Nunito Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  ::selection {
+    background-color: rgba(255, 107, 74, 0.2);
+  }
+}
+
+/* Custom utility classes */
+@layer utilities {
+  .section-padding {
+    padding-top: 100px;
+    padding-bottom: 100px;
+  }
+
+  .section-padding-mobile {
+    padding-top: 64px;
+    padding-bottom: 64px;
+  }
+
+  @media (max-width: 767px) {
+    .section-padding {
+      padding-top: 64px;
+      padding-bottom: 64px;
+    }
+  }
+}
