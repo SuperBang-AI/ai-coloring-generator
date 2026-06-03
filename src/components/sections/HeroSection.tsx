@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { DifficultySelector } from "@/components/ui/DifficultySelector";
 import { trackEvent } from "@/lib/analytics";
+import { getClientId } from "@/lib/client-id";
 
 interface UsageInfo {
   remaining: number;
@@ -26,7 +27,9 @@ export function HeroSection() {
   // Fetch usage info on mount
   const fetchUsage = useCallback(async () => {
     try {
-      const res = await fetch("https://coloring-generator.ai-coloring.workers.dev/api/usage");
+      const res = await fetch("https://coloring-generator.ai-coloring.workers.dev/api/usage", {
+        headers: { "X-Client-Id": getClientId() },
+      });
       if (res.ok) {
         const data: UsageInfo = await res.json();
         setRemaining(data.remaining ?? null);
@@ -65,7 +68,10 @@ export function HeroSection() {
     try {
       const res = await fetch("https://coloring-generator.ai-coloring.workers.dev/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Client-Id": getClientId(),
+        },
         body: JSON.stringify({ prompt: trimmed, style }),
       });
 
