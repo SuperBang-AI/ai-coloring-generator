@@ -157,7 +157,7 @@ export default function RootLayout({
         />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="canonical" href={siteUrl} />
+
       </head>
       <body className="min-h-screen bg-[#FFF9F2] text-[#3D2C24] antialiased">
         {children}

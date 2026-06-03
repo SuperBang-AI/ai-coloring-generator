@@ -15,7 +15,12 @@ interface AccordionProps {
 
 export function Accordion({ items, className = "" }: AccordionProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   const contentRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const toggle = (index: number) => {
     const newIndex = openIndex === index ? null : index;
@@ -66,11 +71,18 @@ export function Accordion({ items, className = "" }: AccordionProps) {
             </button>
             <div
               ref={(el) => { contentRefs.current[index] = el; }}
+              hidden={!hydrated || !isOpen}
               className="overflow-hidden transition-all duration-300 ease-in-out"
-              style={{
-                maxHeight: isOpen ? (contentRefs.current[index]?.scrollHeight || 500) + "px" : "0px",
-                opacity: isOpen ? 1 : 0,
-              }}
+              style={
+                hydrated
+                  ? {
+                      maxHeight: isOpen
+                        ? (contentRefs.current[index]?.scrollHeight || 500) + "px"
+                        : "0px",
+                      opacity: isOpen ? 1 : 0,
+                    }
+                  : undefined
+              }
               aria-hidden={!isOpen}
             >
               <div className="pb-5 px-2 text-[#3D2C24] leading-relaxed whitespace-pre-line">

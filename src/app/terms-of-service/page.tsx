@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description: "Terms of Service for the AI Coloring Page Generator. Learn about usage rules, intellectual property, and limitations.",
+  alternates: {
+    canonical: "/terms-of-service",
+  },
 };
 
 export default function TermsPage() {

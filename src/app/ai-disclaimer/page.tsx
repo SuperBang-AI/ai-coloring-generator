@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "AI Disclaimer",
   description: "Important disclaimers about AI-generated coloring pages — quality, copyright, safety, and appropriate use.",
+  alternates: {
+    canonical: "/ai-disclaimer",
+  },
 };
 
 export default function AIDisclaimerPage() {

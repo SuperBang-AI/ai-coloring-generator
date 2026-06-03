@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Refund Policy",
   description: "Our refund policy for the AI Coloring Page Generator. Currently free — no refunds needed. Covers future paid plans.",
+  alternates: {
+    canonical: "/refund-policy",
+  },
 };
 
 export default function RefundPolicyPage() {
