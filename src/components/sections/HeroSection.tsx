@@ -26,7 +26,7 @@ export function HeroSection() {
   // Fetch usage info on mount
   const fetchUsage = useCallback(async () => {
     try {
-      const res = await fetch("/api/usage");
+      const res = await fetch("https://coloring-generator.ai-coloring.workers.dev/api/usage");
       if (res.ok) {
         const data: UsageInfo = await res.json();
         setRemaining(data.remaining ?? null);
@@ -63,7 +63,7 @@ export function HeroSection() {
     trackEvent("tool_submit", { prompt_length: trimmed.length, style });
 
     try {
-      const res = await fetch("/api/generate", {
+      const res = await fetch("https://coloring-generator.ai-coloring.workers.dev/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: trimmed, style }),
