@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = "https://coloring-generator.ai-coloring.workers.dev";
+const BACKEND_URL = "https://api.aicoloringcrafter.art";
 
 /**
  * POST /api/generate — proxy to backend Cloudflare Worker
@@ -9,10 +9,15 @@ const BACKEND_URL = "https://coloring-generator.ai-coloring.workers.dev";
  * Returns binary PNG on success (with X-Remaining header),
  * or JSON error on failure.
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Get the client's real IP (for logging)
+    const clientIP =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "127.0.0.1";
     const body = await request.json();
-    const { prompt, difficulty, style } = body;
+    const { prompt, difficulty, style, clientId } = body;
 
     // Validate input
     if (!prompt || typeof prompt !== "string" || prompt.trim().length < 3) {
@@ -34,11 +39,18 @@ export async function POST(request: Request) {
     const validStyles = ["simple", "medium", "complex"];
     const normalizedStyle = validStyles.includes(styleValue) ? styleValue : "medium";
 
-    // Forward to backend Worker
+    // Use clientId (from browser localStorage) for quota tracking
+    // Fallback to client IP if no clientId
+    const quotaId = clientId || clientIP;
+
+    // Forward to backend Worker with quota identifier
     const backendResponse = await fetch(`${BACKEND_URL}/api/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-Forwarded-For": clientIP,
+        "X-Real-IP": clientIP,
+        "X-Quota-Id": quotaId,
       },
       body: JSON.stringify({
         prompt: prompt.trim(),
