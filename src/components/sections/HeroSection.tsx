@@ -21,30 +21,13 @@ export function HeroSection() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [dailyLimit, setDailyLimit] = useState<number>(5);
-  const [clientId, setClientId] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
-  // Generate or retrieve a stable client ID (stored in localStorage)
-  useEffect(() => {
-    let id = localStorage.getItem("coloring_client_id");
-    if (!id) {
-      // crypto.randomUUID() needs HTTPS; use Math.random fallback for HTTP
-      id =
-        "c_" +
-        Array.from({ length: 32 }, () =>
-          Math.floor(Math.random() * 16).toString(16)
-        ).join("");
-      localStorage.setItem("coloring_client_id", id);
-    }
-    setClientId(id);
-  }, []);
-
   // Fetch usage info on mount
   const fetchUsage = useCallback(async () => {
-    if (!clientId) return;
     try {
-      const res = await fetch(`/api/usage?clientId=${encodeURIComponent(clientId)}`);
+      const res = await fetch(`/api/usage?clientId=${encodeURIComponent(getClientId())}`);
       if (res.ok) {
         const data: UsageInfo = await res.json();
         setRemaining(data.remaining ?? null);
@@ -56,7 +39,7 @@ export function HeroSection() {
       // Silently fail — usage display is non-critical
       setRemaining(null);
     }
-  }, [clientId]);
+  }, []);
 
   useEffect(() => {
     fetchUsage();
@@ -84,7 +67,7 @@ export function HeroSection() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: trimmed, style, clientId }),
+        body: JSON.stringify({ prompt: trimmed, style, clientId: getClientId() }),
       });
 
       // Check if response is JSON (error) or binary (image)
